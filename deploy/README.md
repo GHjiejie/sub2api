@@ -31,6 +31,36 @@ This directory contains files for deploying Sub2API on Linux servers and Apple-s
 
 ---
 
+## Local Development Commands
+
+The repository's root `Makefile` manages the local Docker stack using
+`deploy/docker-compose.dev.yml` and `deploy/.env`. Run these commands from the
+repository root with Docker running:
+
+| Command | Description |
+|---------|-------------|
+| `make start` | Start all services in the background and wait for health checks; reuse existing images |
+| `make stop` | Stop all services and preserve containers, configuration, and data |
+| `make restart` | Recreate all services to apply `.env` changes and wait for health checks |
+| `make status` | Show running and stopped containers |
+| `make logs` | Follow application logs; press Ctrl+C to exit |
+| `make docker-build` | Build the application image from source, then run `make start` to use it |
+| `make help` | Show available commands |
+
+For a fresh checkout, prepare `deploy/.env` from `deploy/.env.example` and build
+the image with `make docker-build` before starting. Ordinary starts do not build
+or pull images. The existing `make build` and `make test` commands are unchanged;
+running `make` without a target still builds the frontend and backend.
+
+Use `make logs SERVICE=postgres LOG_TAIL=200` to inspect another service, or
+`make start WAIT_TIMEOUT=300` to allow more startup time. Additional Compose
+build flags can be passed through `make docker-build BUILD_ARGS="..."`.
+
+The default Web UI address is `http://localhost:8080`; the published port is
+configured in `deploy/.env`.
+
+---
+
 ## Apple container Deployment
 
 Apple-silicon Macs running macOS 26 can run the complete Sub2API, PostgreSQL, and Redis stack with Apple `container` 1.1.0 or newer:
