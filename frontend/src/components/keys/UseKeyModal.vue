@@ -276,10 +276,8 @@ import { useClipboard } from '@/composables/useClipboard'
 import { buildCodexModelCatalogUrl, fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
 import {
-  findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
-  parseCodexCatalogModels,
-  selectCodexConfigReasoningEffort
+  parseCodexCatalogModels
 } from '@/utils/codexCatalogConfig'
 
 interface Props {
@@ -348,6 +346,8 @@ const codexModelCatalogPath = computed(() => {
 // Codex expands a leading ~/ on every platform but not %userprofile%, which it
 // resolves relative to the config directory, so config.toml always uses ~/.
 const CODEX_MODEL_CATALOG_CONFIG_PATH = '~/.codex/codex-models.json'
+const OPENAI_CODEX_DEFAULT_MODEL = 'gpt-6.1-sol'
+const OPENAI_CODEX_DEFAULT_REASONING_EFFORT = 'high'
 
 const codexManifestContext = computed(() => {
   if (!showCodexModelCatalog.value) return ''
@@ -711,12 +711,6 @@ function selectCodexCatalogModel(preferredModel: string): string {
   return codexCatalogModelSlugs.value[0] || preferredModel
 }
 
-function codexReasoningEffortTomlLine(modelSlug: string): string {
-  return formatCodexReasoningEffortTomlLine(
-    selectCodexConfigReasoningEffort(findCodexCatalogModel(codexModelManifestContent.value, modelSlug))
-  )
-}
-
 const escapeHtml = (value: string) => value
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -1027,8 +1021,8 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
 
-  const model = selectCodexCatalogModel('gpt-5.5')
-  const reasoningEffortLine = codexReasoningEffortTomlLine(model)
+  const model = OPENAI_CODEX_DEFAULT_MODEL
+  const reasoningEffortLine = formatCodexReasoningEffortTomlLine(OPENAI_CODEX_DEFAULT_REASONING_EFFORT)
 
   // config.toml content
   const configContent = `model_provider = "OpenAI"
@@ -1309,7 +1303,7 @@ function generateRoutedCodexFiles(
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
   const preferredModels: Partial<Record<GroupPlatform, string>> = {
-    openai: 'gpt-5.5',
+    openai: OPENAI_CODEX_DEFAULT_MODEL,
     anthropic: 'claude-sonnet-4-6',
     gemini: 'gemini-2.5-pro',
     antigravity: 'claude-sonnet-4-6',
@@ -1375,8 +1369,8 @@ supports_websockets = false${codexModelCatalogMode.value === 'remote' ? '\n\n[fe
 function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
-  const model = selectCodexCatalogModel('gpt-5.5')
-  const reasoningEffortLine = codexReasoningEffortTomlLine(model)
+  const model = OPENAI_CODEX_DEFAULT_MODEL
+  const reasoningEffortLine = formatCodexReasoningEffortTomlLine(OPENAI_CODEX_DEFAULT_REASONING_EFFORT)
 
   // config.toml content with WebSocket v2
   const configContent = `model_provider = "OpenAI"

@@ -403,8 +403,9 @@ describe('UseKeyModal', () => {
     const configToml = codeBlocks.find((content) => content.includes('model_provider = "OpenAI"'))
 
     expect(configToml).toBeDefined()
-    expect(configToml).toContain('model = "gpt-5.5"')
-    expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('model = "gpt-6.1-sol"')
+    expect(configToml).toContain('review_model = "gpt-6.1-sol"')
+    expect(configToml).toContain('model_reasoning_effort = "high"')
     expect(configToml).not.toContain('model = "gpt-5.4"')
     expect(configToml).not.toContain('model_context_window')
     expect(configToml).not.toContain('model_auto_compact_token_limit')
@@ -547,8 +548,9 @@ describe('UseKeyModal', () => {
     const configToml = codeBlocks.find((content) => content.includes('supports_websockets = true'))
 
     expect(configToml).toBeDefined()
-    expect(configToml).toContain('model = "gpt-5.5"')
-    expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('model = "gpt-6.1-sol"')
+    expect(configToml).toContain('review_model = "gpt-6.1-sol"')
+    expect(configToml).toContain('model_reasoning_effort = "high"')
     expect(configToml).not.toContain('model = "gpt-5.4"')
     expect(configToml).not.toContain('model_context_window')
     expect(configToml).not.toContain('model_auto_compact_token_limit')
@@ -1029,7 +1031,9 @@ describe('UseKeyModal', () => {
         const configToml = wrapper.findAll('pre code')
           .map((code) => code.text())
           .find((content) => content.includes('model_provider = "OpenAI"'))
-        expect(configToml).toContain('model = "gpt-5.5"')
+        expect(configToml).toContain('model = "gpt-6.1-sol"')
+        expect(configToml).toContain('review_model = "gpt-6.1-sol"')
+        expect(configToml).toContain('model_reasoning_effort = "high"')
         expect(configToml).toContain('[model_providers.OpenAI]\nname = "OpenAI"\nbase_url = "https://example.com/v1"\nmodel_catalog_url = "https://example.com/v1/models"')
         expect(configToml).not.toContain('model_catalog_json')
         expect(configToml).toContain('requires_openai_auth = true')
@@ -1041,6 +1045,9 @@ describe('UseKeyModal', () => {
           .map((code) => code.text())
           .find((content) => content.includes('model_provider = "OpenAI"'))!
         expect(fileConfig).toContain('model_catalog_json = "~/.codex/codex-models.json"')
+        expect(fileConfig).toContain('model = "gpt-6.1-sol"')
+        expect(fileConfig).toContain('review_model = "gpt-6.1-sol"')
+        expect(fileConfig).toContain('model_reasoning_effort = "high"')
         expect(fileConfig).not.toContain('model_catalog_url')
         expect(fileConfig.indexOf('model_catalog_json')).toBeLessThan(fileConfig.indexOf('[model_providers.OpenAI]'))
         await wrapper.get('[data-testid="codex-model-catalog-mode"]').setValue('remote')
@@ -1048,6 +1055,58 @@ describe('UseKeyModal', () => {
     }
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it.each(['keys.useKeyModal.cliTabs.codexCli', 'keys.useKeyModal.cliTabs.codexCliWs'].flatMap((transport) => [
+    { transport, catalog: 'stale', models: [{ slug: 'gpt-5.5' }] },
+    {
+      transport,
+      catalog: 'medium-default',
+      models: [
+        { slug: 'gpt-5.5' },
+        {
+          slug: 'gpt-6.1-sol',
+          default_reasoning_level: 'medium',
+          supported_reasoning_levels: [{ effort: 'medium' }, { effort: 'high' }]
+        }
+      ]
+    }
+  ]))(
+    'keeps the configured OpenAI model and high effort in $transport with a $catalog catalog',
+    async ({ transport, models }) => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ models })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const wrapper = mount(UseKeyModal, {
+        props: {
+          show: true,
+          apiKey: 'sk-openai-test',
+          baseUrl: 'https://example.com/v1',
+          platform: 'openai'
+        },
+        global: {
+          stubs: {
+            BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
+            Icon: { template: '<span />' }
+          }
+        }
+      })
+      await wrapper.findAll('button').find((button) => button.text().trim() === transport)!.trigger('click')
+
+      await wrapper.get('[data-testid="codex-model-catalog-fetch"]').trigger('click')
+      await flushPromises()
+
+      const config = wrapper.findAll('pre code').map((code) => code.text())
+        .find((content) => content.includes('model_provider = "OpenAI"'))
+      expect(config).toContain('model = "gpt-6.1-sol"')
+      expect(config).toContain('review_model = "gpt-6.1-sol"')
+      expect(config).toContain('model_reasoning_effort = "high"')
+      expect(config).not.toContain('model_reasoning_effort = "medium"')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    }
+  )
 
   it.each([1024 * 1024 - 1, 1024 * 1024, 1024 * 1024 + 1])(
     'uses file mode only when the manifest exceeds the remote byte limit (%s bytes)',
